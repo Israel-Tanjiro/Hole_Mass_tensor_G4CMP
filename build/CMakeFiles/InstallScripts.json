@@ -1,0 +1,9 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/quantum/Documents/G4CMP_Mass_Hole_Tensor/G4CMP/build/cmake_install.cmake",
+		"/Users/quantum/Documents/G4CMP_Mass_Hole_Tensor/G4CMP/build/library/cmake_install.cmake",
+		"/Users/quantum/Documents/G4CMP_Mass_Hole_Tensor/G4CMP/build/tools/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

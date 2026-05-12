@@ -89,36 +89,47 @@ G4CMPVDriftProcess::PostStepGetPhysicalInteractionLength(
 
 // Fill ParticleChange energy and mass for electron charge carrier momentum
 
-void 
+void
 G4CMPVDriftProcess::FillParticleChange(G4int ivalley, const G4ThreeVector& p) {
-  // Compute kinetic energy from momentum for electrons or holes
   G4double energy = 0.;
-  if (IsElectron()){
+  if (IsElectron()) {
     energy = theLattice->MapPtoEkin(ivalley, GetLocalDirection(p));
-  } else {
-    // Geant4 returns the mass in energy units, with the c_squared already included
-    G4double massc2 = GetCurrentTrack()->GetDynamicParticle()->GetMass();
-    energy = sqrt(p.mag2() + massc2*massc2) - massc2;
+    FillParticleChange(ivalley, energy, p);
+  } else if (IsHole()) {
+    // Use anisotropic tensor energy, and drift direction from v = M^-1 · p
+    G4ThreeVector p_loc = GetLocalDirection(p);
+    energy = theLattice->MapPtoEkin_hole(p_loc);
+    G4ThreeVector v_loc = theLattice->MapPtoV_hole(p_loc);
+    G4ThreeVector v_glo = v_loc;
+    RotateToGlobalDirection(v_glo);
+    FillParticleChange(ivalley, energy, v_glo);
   }
-  FillParticleChange(ivalley, energy, p);
 }
 
 // Fill ParticleChange mass for electron charge carrier with given energy
 
 void G4CMPVDriftProcess::FillParticleChange(G4int ivalley, G4double Ekin,
-					    const G4ThreeVector& v) {
+                                            const G4ThreeVector& v) {
   G4CMP::GetTrackInfo<G4CMPDriftTrackInfo>(GetCurrentTrack())->SetValleyIndex(ivalley);
 
   aParticleChange.ProposeMomentumDirection(v.unit());
   currentEkin = Ekin;
   aParticleChange.ProposeEnergy(currentEkin);
 
-  if (IsElectron()) {		// Geant4 wants mc^2, not plain mass
-    G4double meff = theLattice->GetElectronEffectiveMass(ivalley,GetLocalDirection(v));
+  if (IsElectron()) {       // Geant4 wants mc^2, not plain mass
+    // v here is the local momentum direction (passed from first overload as-is)
+    G4double meff = theLattice->GetElectronEffectiveMass(ivalley,
+                                                         GetLocalDirection(v));
+    aParticleChange.ProposeMass(meff*c_squared);
+  } else if (IsHole()) {
+    // v here is the local velocity direction (M^-1·p, from first overload's
+    // MapPtoV_hole conversion).  GetHoleEffectiveMass uses the relativistic
+    // formula consistent with MapPtoEkin_hole, so it gives the correct
+    // dynamic mass for the anisotropic hole.
+    G4double meff = theLattice->GetHoleEffectiveMass(GetLocalDirection(v));
     aParticleChange.ProposeMass(meff*c_squared);
   }
 }
-
 // Initializing ParticleChange and setting up the correct energy and
 // effective for the charge carrier
 

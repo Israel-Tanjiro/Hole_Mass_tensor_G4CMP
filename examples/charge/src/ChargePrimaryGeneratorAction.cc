@@ -15,16 +15,18 @@
 #include "G4Geantino.hh"
 #include "G4ParticleGun.hh"
 #include "G4SystemOfUnits.hh"
-
+#include "G4ParticleGun.hh"
+#include "G4RandomDirection.hh"
 
 ChargePrimaryGeneratorAction::ChargePrimaryGeneratorAction() {
-  G4int n_particle = 1;
-  particleGun  = new G4ParticleGun(n_particle);
-  
-  // default particle kinematics -- user may specify individual particle
-  particleGun->SetParticleMomentumDirection(G4ThreeVector(0,0,1));
-  particleGun->SetParticlePosition(G4ThreeVector(0.0,0.0,0.0));
-  particleGun->SetParticleEnergy(1e-6*eV);
+  particleGun  = new G4GeneralParticleSource();
+  // G4int n_particle = 1;
+  // particleGun  = new G4ParticleGun(n_particle);
+  //
+  // // default particle kinematics -- user may specify individual particle
+  // particleGun->SetParticleMomentumDirection(G4ThreeVector(0,0,1));
+  // particleGun->SetParticlePosition(G4ThreeVector(0.0,0.0,0.0));
+  // particleGun->SetParticleEnergy(1e-6*eV);
 }
 
 ChargePrimaryGeneratorAction::~ChargePrimaryGeneratorAction() {
@@ -45,4 +47,3 @@ void ChargePrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent) {
     particleGun->GeneratePrimaryVertex(anEvent);
   }
 }
-

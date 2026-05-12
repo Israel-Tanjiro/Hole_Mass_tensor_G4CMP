@@ -8,24 +8,22 @@
 
 #include "G4VUserPrimaryGeneratorAction.hh"
 #include "globals.hh"
+#include "G4GeneralParticleSource.hh"
 
 class G4ParticleGun;
-
 class ChargePrimaryGeneratorAction : public G4VUserPrimaryGeneratorAction
 {
 public:
-  ChargePrimaryGeneratorAction();    
+  ChargePrimaryGeneratorAction();
   virtual ~ChargePrimaryGeneratorAction();
 
   public:
     virtual void GeneratePrimaries(G4Event*);
 
   private:
-    G4ParticleGun*                particleGun;
+    G4GeneralParticleSource*                particleGun;
 
 };
 
 
 #endif
-
-

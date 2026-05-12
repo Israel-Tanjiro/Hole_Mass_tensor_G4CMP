@@ -114,10 +114,23 @@ public:
   G4ThreeVector MapPtoK(G4int ivalley, const G4ThreeVector& p_e) const;
   G4ThreeVector MapKtoP(G4int ivalley, const G4ThreeVector& k) const ;
   G4ThreeVector MapEkintoP(G4int iv, const G4ThreeVector& pdir, const G4double Ekin) const;
+  // Hole mapping functions (Gamma point, no valleys) - mirror electrons
+  G4ThreeVector MapPtoV_hole(const G4ThreeVector& p) const;
+  G4ThreeVector MapV_holeToP(const G4ThreeVector& v) const;
+  G4ThreeVector MapP_QToP_hole(const G4ThreeVector& P_Q) const;
+  G4ThreeVector MapPToP_Q_hole(const G4ThreeVector& P) const;
+  G4ThreeVector MapV_holeToK(const G4ThreeVector& v) const;
+  G4ThreeVector MapPtoK_hole(const G4ThreeVector& p) const;
+  G4ThreeVector MapKtoP_hole(const G4ThreeVector& k) const;
+  G4ThreeVector MapEkintoP_hole(const G4ThreeVector& pdir, G4double Ekin) const;
+
 
   // Apply energy relationships for electron transport
   G4double MapPtoEkin(G4int ivalley, const G4ThreeVector& p_e) const;
   G4double MapV_elToEkin(G4int ivalley, const G4ThreeVector& v_e) const;
+  // Energy mappings for holes
+  G4double MapPtoEkin_hole(const G4ThreeVector& p) const;
+  G4double MapV_holeToEkin(const G4ThreeVector& v) const;
 
 public:  
   const G4LatticeLogical* GetLattice() const { return fLattice; }
@@ -176,15 +189,29 @@ public:
   G4double GetElectronMass() const { return fLattice->GetElectronMass(); }
   G4double GetElectronDOSMass() const { return fLattice->GetElectronDOSMass(); }
   G4double GetElectronEffectiveMass(G4int iv, const G4ThreeVector& p) const;
+  // Hole effective mass (from velocity) - used by Geant4
+  G4double GetHoleEffectiveMass(const G4ThreeVector& v) const;
+  // Hole effective mass from momentum (optional, for symmetry)
+  //G4double GetHoleEffectiveMass(const G4ThreeVector& p) const;
+  // Conductivity mass (isotropic scalar derived from tensor)
+  G4double GetHoleConductivityMass() const { return fLattice->GetHoleConductivityMass(); }
   G4ThreeVector RotateToValley(G4int iv, const G4ThreeVector& v) const;
   G4ThreeVector RotateFromValley(G4int iv, const G4ThreeVector& v) const;
   G4ThreeVector EllipsoidalToSphericalTranformation(G4int iv, const G4ThreeVector& v) const;
   G4ThreeVector SphericalToEllipsoidalTranformation(G4int iv, const G4ThreeVector& v) const;
+  // Herring-Vogt transformations for holes
+  G4ThreeVector HoleEllipsoidalToSphericalTransformation(const G4ThreeVector& v) const;
+  G4ThreeVector HoleSphericalToEllipsoidalTransformation(const G4ThreeVector& v) const;
 
   const G4RotationMatrix& GetMassTensor() const { return fLattice->GetMassTensor(); }
   const G4RotationMatrix& GetMInvTensor() const { return fLattice->GetMInvTensor(); }
   const G4RotationMatrix& GetSqrtTensor() const { return fLattice->GetSqrtTensor(); }
   const G4RotationMatrix& GetSqrtInvTensor() const { return fLattice->GetSqrtInvTensor(); }
+  // Hole mass tensor getters (anisotropic, for Luke scattering)
+  const G4RotationMatrix& GetHoleMassTensor() const { return fLattice->GetHoleMassTensor(); }
+  const G4RotationMatrix& GetHoleMInvTensor() const { return fLattice->GetHoleMInvTensor(); }
+  const G4RotationMatrix& GetSqrtHoleTensor() const { return fLattice->GetSqrtHoleTensor(); }
+  const G4RotationMatrix& GetSqrtHoleInvTensor() const { return fLattice->GetSqrtHoleInvTensor(); }
 
   // Electrons are biased to move along energy minima in momentum space
   size_t NumberOfValleys() const { return fLattice->NumberOfValleys(); }

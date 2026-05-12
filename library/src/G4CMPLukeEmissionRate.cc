@@ -22,7 +22,8 @@
 #include "G4ThreeVector.hh"
 #include "G4Track.hh"
 #include <math.h>
-
+#include <iostream>
+#include <fstream>
 
 // Scattering rate is computed from electric field
 
@@ -47,11 +48,29 @@ G4double G4CMPLukeEmissionRate::Rate(const G4Track& aTrack) const {
     ktrk = theLattice->EllipsoidalToSphericalTranformation(iValley, ktrk);
     mass = theLattice->GetElectronMass();
     // The l0 in configuration file is calculated using the conductivity mass
-    // l0 = l0*pow(theLattice->GetElectronMass(),3)/(pow(mass,3));
-  } else if (G4CMP::IsHole(aTrack)) {
+    //l0 = l0*pow(theLattice->GetElectronMass(),3)/(pow(mass,3));
+  // } else if (G4CMP::IsHole(aTrack)) {
+  //   l0 = theLattice->GetHoleScatter();
+  //   ktrk = GetLocalWaveVector(aTrack);
+  //   mass = theLattice->GetHoleMass();
+    } else if (G4CMP::IsHole(aTrack)) {
     l0 = theLattice->GetHoleScatter();
-    ktrk = GetLocalWaveVector(aTrack);
-    mass = theLattice->GetHoleMass();
+    //l0 = l0 * pow(theLattice->GetHoleConductivityMass(), 3) / pow(mass, 3);
+
+    G4ThreeVector p_local = GetLocalMomentum(aTrack);
+    ktrk = theLattice->MapPtoK_hole(p_local);
+    ktrk = theLattice->HoleEllipsoidalToSphericalTransformation(ktrk);
+    mass = theLattice->GetHoleConductivityMass();
+    G4double vsound = theLattice->GetSoundSpeed();
+   G4double gammaSound = 1/sqrt(1.-vsound*vsound/c_squared); // Move up
+    // static std::ofstream debugFile("luke_hole_debug.txt", std::ios::app);
+    // if (debugFile.is_open()) {
+    //     debugFile << "Hole: p_dir=" << p_local.unit()
+    //               << " m_cond=" << mass/(electron_mass_c2/c_squared) << " m_e"
+    //               << " kmag=" << ktrk.mag()
+    //               << " kSound=" << gammaSound * vsound * mass / hbar_Planck
+    //               << std::endl;
+    // }
   }
   G4double kmag = ktrk.mag();
 
@@ -59,6 +78,7 @@ G4double G4CMPLukeEmissionRate::Rate(const G4Track& aTrack) const {
   kSound = gammaSound*vsound*mass/hbar_Planck;
 
   return (kmag > kSound) ? 1./ChargeCarrierTimeStep(kmag/kSound, l0) : 0.;
+
 }
 
 

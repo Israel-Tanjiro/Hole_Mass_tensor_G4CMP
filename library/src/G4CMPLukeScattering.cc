@@ -144,14 +144,32 @@ G4VParticleChange* G4CMPLukeScattering::PostStepDoIt(const G4Track& aTrack,
     ktrk = lat->EllipsoidalToSphericalTranformation(iValley, ktrk);
     mass = lat->GetElectronMass();
     Etrk = lat->MapPtoEkin(iValley, ptrk);
-  } else if (IsHole()) {
-    ktrk = GetLocalWaveVector(aTrack);
-    mass = lat->GetHoleMass();
+  // } else if (IsHole()) {
+  //   ktrk = GetLocalWaveVector(aTrack);
+  //   mass = lat->GetHoleMass();
+  //   Etrk = GetKineticEnergy(aTrack);
+  // } 
+    } else if (IsHole()) {
+    G4ThreeVector p_local = GetLocalMomentum(aTrack);
+    ktrk = lat->MapPtoK_hole(p_local);
+    ktrk = lat->HoleEllipsoidalToSphericalTransformation(ktrk);
+    mass = lat->GetHoleConductivityMass();
     Etrk = GetKineticEnergy(aTrack);
-  } else {
+    static std::ofstream debugFile("luke_scatter_debug.txt", std::ios::app);
+    if (debugFile.is_open()) {
+        debugFile << "Scatter: p_dir=" << p_local.unit()
+                  << " mass=" << mass/(electron_mass_c2/c_squared) << " m_e"
+                  << " Ekin=" << Etrk/eV << " eV"
+                  << " kmag=" << ktrk.mag()
+                  << std::endl;
+    }
+  }
+    else {
     G4Exception("G4CMPLukeScattering::PostStepDoIt", "Luke002",
                 EventMustBeAborted, "Unknown charge carrier");
     return &aParticleChange;
+
+
   }
 
   G4ThreeVector kdir = ktrk.unit();
@@ -239,8 +257,13 @@ G4VParticleChange* G4CMPLukeScattering::PostStepDoIt(const G4Track& aTrack,
     Erecoil = Etrk - Ephonon;
 
     if (IsHole()) {
-      precoil = k_recoil * hbarc;
-    } else {
+    qvec = lat->HoleSphericalToEllipsoidalTransformation(qvec);
+    qvec = qmag * qvec.unit();
+
+    G4ThreeVector k_ellip = lat->HoleSphericalToEllipsoidalTransformation(k_recoil);
+    precoil = k_ellip * hbarc;
+    precoil = lat->MapEkintoP_hole(precoil, Erecoil);
+} else {
       // Rotating phonon wavevector out of valley frame into solid frame
       qvec = lat->SphericalToEllipsoidalTranformation(iValley, qvec);
       qvec = qmag * qvec.unit();
@@ -361,9 +384,17 @@ G4VParticleChange* G4CMPLukeScattering::PostStepDoIt(const G4Track& aTrack,
   } else {
     aParticleChange.ProposeNonIonizingEnergyDeposit(Ephonon);
   }
+  if (IsHole()) {
+    G4ThreeVector v_loc = theLattice->MapPtoV_hole(precoil);
+    RotateToGlobalDirection(v_loc);
+    FillParticleChange(newValley, Erecoil, v_loc);
+} else {
+    RotateToGlobalDirection(precoil);
+    FillParticleChange(newValley, Erecoil, precoil);
+}
 
-  RotateToGlobalDirection(precoil);	// Update track in world coordinates
-  FillParticleChange(newValley, Erecoil, precoil);
+  // RotateToGlobalDirection(precoil);	// Update track in world coordinates
+  // FillParticleChange(newValley, Erecoil, precoil);
 
   if (output.good()) {
     output << aTrack.GetWeight()*weight << "," << k_recoil.mag() << ","

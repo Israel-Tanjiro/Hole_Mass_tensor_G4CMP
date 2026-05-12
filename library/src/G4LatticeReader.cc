@@ -64,7 +64,7 @@ G4LatticeReader::G4LatticeReader(G4int vb)
     fDataDir(G4CMPConfigManager::GetLatticeDir()),
     mElectron(electron_mass_c2/c_squared) {
 
-  G4CMPUnitsTable::Init();	// Ensures thread-by-thread initialization  
+  G4CMPUnitsTable::Init();	// Ensures thread-by-thread initialization
 }
 
 G4LatticeReader::~G4LatticeReader() {
@@ -104,7 +104,7 @@ G4LatticeLogical* G4LatticeReader::MakeLattice(const G4String& filename) {
 
   if (verboseLevel>1)
     G4cout << "G4LatticeReader produced\n" << *pLattice << G4endl;
-  
+
   return pLattice;	// Lattice complete; return pointer with ownership
 }
 
@@ -160,6 +160,7 @@ G4bool G4LatticeReader::ProcessToken() {
   if (fToken == "stiffness" ||
       fToken == "cij")      return ProcessStiffness();  // Elasticity element
   if (fToken == "emass")    return ProcessMassTensor();	// e- mass eigenvalues
+  if (fToken == "hmass_tensor") return ProcessHoleMassTensor();// Adding this Token for Mass Tensor and Keep the scalar for debbuging
   if (fToken == "valley")   return ProcessEulerAngles(fToken); // e- drift dirs
   if (fToken == "valleydir")return ProcessValleyDirection(); // miller indices valley dirs
   if (fToken == "debye")    return ProcessDebyeLevel(); // Freq or temperature
@@ -395,6 +396,20 @@ G4bool G4LatticeReader::ProcessMassTensor() {
 	   << G4endl;
 
   pLattice->SetMassTensor(mxx, myy, mzz);
+  return psLatfile->good();
+}
+// Read diagonal scale factors for hole mass tensor (mXX mYY mZZ in m_e units)
+// Config file format:  hmass <mXX> <mYY> <mZZ>
+// Example for Ge HH anisotropy test:  hmass 0.51 0.21 0.21
+
+G4bool G4LatticeReader::ProcessHoleMassTensor() {
+  G4double mxx=1., myy=1., mzz=1.;
+  *psLatfile >> mxx >> myy >> mzz;
+  if (verboseLevel>1)
+    G4cout << " ProcessHoleMassTensor " << mxx << " " << myy << " " << mzz
+	   << G4endl;
+
+  pLattice->SetHoleMassTensor(mxx, myy, mzz);
   return psLatfile->good();
 }
 

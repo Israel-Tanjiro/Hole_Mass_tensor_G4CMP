@@ -73,6 +73,7 @@
 #include <fstream>
 
 
+
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo....
 
 G4LatticeLogical::G4LatticeLogical(const G4String& name)
@@ -85,6 +86,12 @@ G4LatticeLogical::G4LatticeLogical(const G4String& name)
     fVSound(0.), fVTrans(0.), fL0_e(0.), fL0_h(0.), 
     mElectron(electron_mass_c2/c_squared),
     fHoleMass(mElectron), fElectronMass(mElectron), fElectronMDOS(mElectron),
+    fHoleMassConductivity(mElectron), 
+    fHoleMassTensor(G4Rep3x3(mElectron,0.,0.,0.,mElectron,0.,0.,0.,mElectron)),
+    fHoleMassInverse(G4Rep3x3(1./mElectron,0.,0.,0.,1./mElectron,0.,0.,0.,1./mElectron)),
+    fSqrtHoleMassTensor(G4Rep3x3(std::sqrt(mElectron),0.,0.,0.,std::sqrt(mElectron),0.,0.,0.,std::sqrt(mElectron))),
+    fSqrtHoleInvMassTensor(G4Rep3x3(1./std::sqrt(mElectron),0.,0.,0.,1./std::sqrt(mElectron),0.,0.,0.,1./std::sqrt(mElectron))),
+    fHoleToCrystal(G4RotationMatrix::IDENTITY),
     fBandGap(0.), fPairEnergy(0.), fFanoFactor(1.),
     fMassTensor(G4Rep3x3(mElectron,0.,0.,0.,mElectron,0.,0.,0.,mElectron)),
     fMassInverse(G4Rep3x3(1/mElectron,0.,0.,0.,1/mElectron,0.,0.,0.,1/mElectron)),
@@ -143,6 +150,12 @@ G4LatticeLogical& G4LatticeLogical::operator=(const G4LatticeLogical& rhs) {
   fL0_e = rhs.fL0_e;
   fL0_h = rhs.fL0_h;
   fHoleMass = rhs.fHoleMass;
+  fHoleMassConductivity = rhs.fHoleMassConductivity;
+  fHoleMassTensor = rhs.fHoleMassTensor;
+  fHoleMassInverse = rhs.fHoleMassInverse;
+  fSqrtHoleMassTensor = rhs.fSqrtHoleMassTensor;
+  fSqrtHoleInvMassTensor = rhs.fSqrtHoleInvMassTensor;
+  fHoleToCrystal = rhs.fHoleToCrystal;
   fElectronMass = rhs.fElectronMass;
   fElectronMDOS = rhs.fElectronMDOS;
   fBandGap = rhs.fBandGap;
@@ -226,7 +239,10 @@ void G4LatticeLogical::SetCrystal(G4CMPCrystalGroup::Bravais group, G4double a,
   fBasis[1] = b*fCrystal.axis[1];
   fBasis[2] = c*fCrystal.axis[2];
 }
-
+//o0o0o0 Rotation of Holes aligned with Miller Indices
+void G4LatticeLogical::SetHoleCrystalRotation(const G4RotationMatrix& R) const {
+  fHoleToCrystal = R;
+}
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo....
 
@@ -452,7 +468,19 @@ G4LatticeLogical::MapPtoV_el(G4int ivalley, const G4ThreeVector& p_e) const {
     G4cout << "G4LatticeLogical::MapPtoV_el " << ivalley << " " << p_e << G4endl;
 #endif
 
+
+
+
+
+
+
   return p_e*c_light/(MapPtoEkin(ivalley,p_e) + GetElectronMass()*c_squared);
+
+
+
+
+
+
 }
 
 G4ThreeVector 
@@ -478,6 +506,102 @@ G4LatticeLogical::MapV_elToP(G4int ivalley, const G4ThreeVector& v_e) const {
   return gamma*GetElectronMass()*c_light*v_e;
 }
 
+///0o0o0o0o0o0 Convert Hole momentum to Crystal velocity Issues wiht the final position checking for debugg
+// G4ThreeVector 
+// G4LatticeLogical::MapPtoV_hole(const G4ThreeVector& p) const {
+// #ifdef G4CMP_DEBUG
+//   if (verboseLevel>1)
+//     G4cout << "G4LatticeLogical::MapPtoV_hole " << p << G4endl;
+// #endif
+
+//   return p * c_light / (MapPtoEkin_hole(p) + GetHoleConductivityMass() * c_squared);
+// }
+G4ThreeVector 
+G4LatticeLogical::MapPtoV_hole(const G4ThreeVector& p) const {
+  // Debug file (append mode, flush each write)
+  //static std::ofstream dbg("map_ptov_hole_debug.txt", std::ios::app);
+  
+  // Rotate momentum to crystal frame (where mass tensor is diagonal)
+  G4ThreeVector p_crystal = fHoleToCrystal * p;
+  
+  // Non-relativistic velocity: v_nr = M^{-1} * p_crystal
+  G4ThreeVector v_nr_crystal = fHoleMassInverse * p_crystal;
+  
+  // Relativistic gamma factor from kinetic energy
+  G4double Ekin = MapPtoEkin_hole(p);
+  G4double m_cond = GetHoleConductivityMass();
+  G4double gamma = 1.0 + Ekin / (m_cond * c_squared);
+  
+  // Relativistic velocity: v = v_nr / gamma
+  G4ThreeVector v_crystal = v_nr_crystal / gamma;
+  
+  // Rotate back to lattice (geometry) frame
+  G4ThreeVector v_lattice = fHoleToCrystal.inverse() * v_crystal;
+  
+  //Debug output
+  // if (dbg.is_open()) {
+  //   dbg << "p_lattice = " << p << "\n"
+  //       << "p_crystal = " << p_crystal << "\n"
+  //       << "M_diag (m_e) = (" 
+  //       << fHoleMassTensor.xx()/mElectron << ", "
+  //       << fHoleMassTensor.yy()/mElectron << ", "
+  //       << fHoleMassTensor.zz()/mElectron << ")\n"
+  //       << "Ekin = " << Ekin/eV << " eV\n"
+  //       << "m_cond (m_e) = " << m_cond/mElectron << "\n"
+  //       << "gamma = " << gamma << "\n"
+  //       << "v_nr_crystal = " << v_nr_crystal << "\n"
+  //       << "v_crystal = " << v_crystal << "\n"
+  //       << "v_lattice = " << v_lattice << "\n"
+  //       << "----------------------------------------\n";
+  //   dbg.flush();
+  // }
+  
+  return v_lattice;
+}
+
+
+// G4ThreeVector 
+// G4LatticeLogical::MapV_holeToP(const G4ThreeVector& v) const {
+// #ifdef G4CMP_DEBUG
+//   if (verboseLevel>1)
+//     G4cout << "G4LatticeLogical::MapV_holeToP " << v << G4endl;
+// #endif
+
+//   // Rotate to crystal frame where mass tensor is diagonal
+//   G4ThreeVector v_crystal = fHoleToCrystal * v;
+//   G4double bandV = (fHoleMassTensor.xx() * v_crystal.x() * v_crystal.x() +
+//                     fHoleMassTensor.yy() * v_crystal.y() * v_crystal.y() +
+//                     fHoleMassTensor.zz() * v_crystal.z() * v_crystal.z());
+//   G4double gamma = 1.0 / std::sqrt(1.0 - bandV / (GetHoleConductivityMass() * c_squared));
+
+// #ifdef G4CMP_DEBUG
+//   if (verboseLevel>1) {
+//     G4cout << " <v|M_h|v> " << bandV << G4endl << " gamma " << gamma
+//            << G4endl << " returning " << gamma * GetHoleConductivityMass() * c_light * v << G4endl;
+//   }
+// #endif
+
+//   return gamma * GetHoleConductivityMass() * c_light * v;
+// }
+//New Fixed Function
+G4ThreeVector G4LatticeLogical::MapV_holeToP(const G4ThreeVector& v) const {
+  // Rotate to crystal frame
+  G4ThreeVector v_crystal = fHoleToCrystal * v;
+  // Compute <v|M|v> = v·M·v
+  G4double bandV = v_crystal.x()*v_crystal.x() * fHoleMassTensor.xx() +
+                   v_crystal.y()*v_crystal.y() * fHoleMassTensor.yy() +
+                   v_crystal.z()*v_crystal.z() * fHoleMassTensor.zz();
+  G4double m_cond = GetHoleConductivityMass();
+  G4double gamma = 1.0 / std::sqrt(1.0 - bandV / (m_cond * c_squared));
+  // Momentum in crystal frame: p = gamma * M · v
+  G4ThreeVector p_crystal = gamma * (fHoleMassTensor * v_crystal);
+  // Rotate back to lattice frame
+  G4ThreeVector p_lattice = fHoleToCrystal.inverse() * p_crystal;
+  return p_lattice;
+}
+
+/////////o0o0o0o0o0o0o0o0o0o0
+
 G4ThreeVector 
 G4LatticeLogical::MapPToP_Q(G4int ivalley, const G4ThreeVector& P) const {
 #ifdef G4CMP_DEBUG
@@ -496,6 +620,22 @@ G4LatticeLogical::MapPToP_Q(G4int ivalley, const G4ThreeVector& P) const {
 
   return nToV*(GetMassTensor()*(vToN*P/GetElectronMass()));
 }
+//0o0o0o---Hole
+G4ThreeVector 
+G4LatticeLogical::MapPToP_Q_hole(const G4ThreeVector& P) const {
+#ifdef G4CMP_DEBUG
+  if (verboseLevel>1)
+    G4cout << "G4LatticeLogical::MapPToP_Q_hole " << P << G4endl;
+#endif
+
+  // Rotate to crystal frame (where mass tensor is diagonal)
+  G4ThreeVector P_crystal = fHoleToCrystal * P;
+  // Apply mass tensor and divide by conductivity mass
+  G4ThreeVector P_Q_crystal = (fHoleMassTensor * P_crystal) / fHoleMassConductivity;
+  // Rotate back to lattice frame
+  return fHoleToCrystal.inverse() * P_Q_crystal;
+}
+
 
 G4ThreeVector 
 G4LatticeLogical::MapP_QToP(G4int ivalley, const G4ThreeVector& P_Q) const {
@@ -514,7 +654,23 @@ G4LatticeLogical::MapP_QToP(G4int ivalley, const G4ThreeVector& P_Q) const {
 
   return nToV*(GetMInvTensor()*(vToN*P_Q*GetElectronMass()));
 }
+///0oo0o0o0o0o Hole
+G4ThreeVector 
+G4LatticeLogical::MapP_QToP_hole(const G4ThreeVector& P_Q) const {
+#ifdef G4CMP_DEBUG
+  if (verboseLevel>1)
+    G4cout << "G4LatticeLogical::MapP_QToP_hole " << P_Q << G4endl;
+#endif
 
+  // Rotate to crystal frame
+  G4ThreeVector P_Q_crystal = fHoleToCrystal * P_Q;
+  // Apply inverse mass tensor and multiply by conductivity mass
+  G4ThreeVector P_crystal = (fHoleMassInverse * P_Q_crystal) * fHoleMassConductivity;
+  // Rotate back to lattice frame
+  return fHoleToCrystal.inverse() * P_crystal;
+}
+
+////////0o0o0o0o0o0o0o0o0o0
 G4ThreeVector
 G4LatticeLogical::MapV_elToK(G4int ivalley, const G4ThreeVector &v_e) const {
 #ifdef G4CMP_DEBUG
@@ -525,6 +681,18 @@ G4LatticeLogical::MapV_elToK(G4int ivalley, const G4ThreeVector &v_e) const {
   tempvec() = MapV_elToP(ivalley, v_e);
   return MapPtoK(ivalley, tempvec());
 }
+//0o0o0 Hole
+G4ThreeVector 
+G4LatticeLogical::MapV_holeToK(const G4ThreeVector& v) const {
+#ifdef G4CMP_DEBUG
+  if (verboseLevel>1)
+    G4cout << "G4LatticeLogical::MapV_holeToK " << v << G4endl;
+#endif
+
+  tempvec() = MapV_holeToP(v);
+  return MapPtoK_hole(tempvec());
+}
+
 
 G4ThreeVector 
 G4LatticeLogical::MapPtoK(G4int ivalley, const G4ThreeVector& p_e) const {
@@ -542,6 +710,11 @@ G4LatticeLogical::MapPtoK(G4int ivalley, const G4ThreeVector& p_e) const {
 
   return tempvec();
 }
+//o0o0o0o0 Hole
+G4ThreeVector G4LatticeLogical::MapPtoK_hole(const G4ThreeVector& p) const {
+  return p / hbarc;
+}
+
 
 G4ThreeVector
 G4LatticeLogical::MapKtoP(G4int ivalley, const G4ThreeVector& k) const {
@@ -563,6 +736,16 @@ G4LatticeLogical::MapKtoP(G4int ivalley, const G4ThreeVector& k) const {
     return MapP_QToP(ivalley, tempvec());
 }
 
+/// o0o0o0o Holes
+G4ThreeVector 
+G4LatticeLogical::MapKtoP_hole(const G4ThreeVector& k) const {
+return k * hbarc;
+}
+
+
+
+
+
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo....
 
 // Apply energy-momentum relationship for electron transport
@@ -583,6 +766,11 @@ G4LatticeLogical::MapP_QtoEkin(G4int iv, const G4ThreeVector& p) const {
 
   return MapPtoEkin(iv, MapP_QToP(iv, p));
 }
+//o0o0 Hole
+G4double G4LatticeLogical::MapP_QtoEkin_hole(const G4ThreeVector& p_Q) const {
+  return MapPtoEkin_hole( MapP_QToP_hole(p_Q) );
+}
+
 
 G4ThreeVector
 G4LatticeLogical::MapEkintoP(G4int iv, const G4ThreeVector& pdir, const G4double Ekin) const {
@@ -607,6 +795,21 @@ G4LatticeLogical::MapEkintoP(G4int iv, const G4ThreeVector& pdir, const G4double
 
   return pdir*PMag;
 }
+
+//0o0o0o hole
+G4ThreeVector G4LatticeLogical::MapEkintoP_hole(const G4ThreeVector& pdir, G4double Ekin) const {
+  // pdir is a direction (unit vector) in lattice coordinates
+  // Rotate to crystal frame where mass tensor is diagonal
+  G4ThreeVector pdir_crystal = fHoleToCrystal * pdir;
+  G4double bandP = (fHoleMassTensor.xx() * pdir_crystal.x() * pdir_crystal.x() +
+                    fHoleMassTensor.yy() * pdir_crystal.y() * pdir_crystal.y() +
+                    fHoleMassTensor.zz() * pdir_crystal.z() * pdir_crystal.z());
+  // Relativistic momentum magnitude from kinetic energy
+  G4double m_cond = GetHoleConductivityMass();
+  G4double PMag = sqrt(m_cond * (Ekin*Ekin + 2.*Ekin*m_cond*c_squared)) / sqrt(bandP);
+  return PMag * pdir;
+}
+
 
 G4double  
 G4LatticeLogical::MapPtoEkin(G4int iv, const G4ThreeVector& p) const {
@@ -637,6 +840,35 @@ G4LatticeLogical::MapPtoEkin(G4int iv, const G4ThreeVector& p) const {
   return sqrt(bandP/GetElectronMass() + GetElectronMass()*c_squared*GetElectronMass()*c_squared) - GetElectronMass()*c_squared;
 
 }
+///Hole
+G4double  
+G4LatticeLogical::MapPtoEkin_hole(const G4ThreeVector& p) const {
+#ifdef G4CMP_DEBUG
+  if (verboseLevel>1)
+    G4cout << "G4LatticeLogical::MapPtoEkin_hole " << p << G4endl;
+#endif
+
+  // Rotate to crystal frame (where mass tensor is diagonal)
+  G4ThreeVector p_crystal = fHoleToCrystal * p;
+  G4double bandP = p_crystal.x()*p_crystal.x() * fHoleMassTensor.xx() +
+                   p_crystal.y()*p_crystal.y() * fHoleMassTensor.yy() +
+                   p_crystal.z()*p_crystal.z() * fHoleMassTensor.zz();
+
+  G4double m_cond = fHoleMassConductivity;
+  G4double m_cond_c2 = m_cond * c_squared;
+  G4double value = bandP / m_cond + m_cond_c2 * m_cond_c2;
+  if (value < 0) value = 0;   // protect against rounding
+  G4double Ekin = std::sqrt(value) - m_cond_c2;
+
+#ifdef G4CMP_DEBUG
+  if (verboseLevel>1) {
+    G4cout << " bandP " << bandP << " m_cond " << m_cond
+           << " returning Ekin " << Ekin << G4endl;
+  }
+#endif
+
+  return Ekin;
+}
 
 G4double
 G4LatticeLogical::MapV_elToEkin(G4int iv, const G4ThreeVector& v) const {
@@ -646,6 +878,17 @@ G4LatticeLogical::MapV_elToEkin(G4int iv, const G4ThreeVector& v) const {
 #endif
 
   return MapPtoEkin(iv, MapV_elToP(iv, v));
+}
+///Hole
+
+G4double
+G4LatticeLogical::MapV_holeToEkin(const G4ThreeVector& v) const {
+#ifdef G4CMP_DEBUG
+  if (verboseLevel>1)
+    G4cout << "G4LatticeLogical::MapV_holeToEkin " << v << G4endl;
+#endif
+
+  return MapPtoEkin_hole(MapV_holeToP(v));
 }
 
 // Compute effective "scalar" electron mass to match energy/momentum relation
@@ -661,6 +904,17 @@ G4LatticeLogical::GetElectronEffectiveMass(G4int iv,
   G4double Ekin = MapPtoEkin(iv, p);
   // return p.mag2()/(2*c_squared*Ekin);		// Non-relativistic
   return (p.mag2()-Ekin*Ekin)/(2.*Ekin*c_squared);	// Relativistic
+}
+
+G4double 
+G4LatticeLogical::GetHoleEffectiveMass(const G4ThreeVector& p) const {
+#ifdef G4CMP_DEBUG
+  if (verboseLevel>1)
+    G4cout << "G4LatticeLogical::GetHoleEffectiveMass (momentum) " << p << " p2 = " << p.mag2() << G4endl;
+#endif
+  G4double Ekin = MapPtoEkin_hole(p);
+  // Relativistic formula (same as electron)
+  return (p.mag2() - Ekin*Ekin) / (2.*Ekin*c_squared);
 }
 
 // Compute vector in spherical frame from the ellipsoidal fame
@@ -725,6 +979,23 @@ G4LatticeLogical::SphericalToEllipsoidalTranformation(G4int iv, const G4ThreeVec
   return RotateFromValley(iv, tempvec());
 }
 
+////0o0o0o0o0o0o0o0o0o0 Holes
+G4ThreeVector
+G4LatticeLogical::HoleEllipsoidalToSphericalTransformation(const G4ThreeVector& v) const {
+  // Rotate to crystal frame (where mass tensor is diagonal)
+  G4ThreeVector v_crystal = fHoleToCrystal * v;
+  // Apply Herring-Vogt transformation: v' = sqrt(m_cond) * M^{-1/2} · v_crystal
+  return std::sqrt(fHoleMassConductivity) * (fSqrtHoleInvMassTensor * v_crystal);
+}
+
+G4ThreeVector
+G4LatticeLogical::HoleSphericalToEllipsoidalTransformation(const G4ThreeVector& v) const {
+  // Apply inverse Herring-Vogt: v_crystal = (1/sqrt(m_cond)) * M^{+1/2} · v
+  G4ThreeVector v_crystal = (1.0 / std::sqrt(fHoleMassConductivity)) * (fSqrtHoleMassTensor * v);
+  // Rotate back to lattice frame
+  return fHoleToCrystal.inverse() * v_crystal;
+}
+
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo....
 
 // Store electron mass tensor using diagonal elements
@@ -763,6 +1034,36 @@ void G4LatticeLogical::SetMassTensor(const G4RotationMatrix& etens) {
 
   FillMassInfo();
 }
+//o0o0o0o0o0o0 Holes
+void G4LatticeLogical::SetHoleMassTensor(G4double mXX, G4double mYY, G4double mZZ) {
+  if (verboseLevel>1) {
+    G4cout << "G4LatticeLogical::SetHoleMassTensor " << mXX << " " << mYY
+           << " " << mZZ << " *m_e" << G4endl;
+  }
+  fHoleMassTensor.set(G4Rep3x3(mXX*mElectron, 0., 0.,
+                               0., mYY*mElectron, 0.,
+                               0., 0., mZZ*mElectron));
+  FillHoleMassInfo();
+}
+void G4LatticeLogical::SetHoleMassTensor(const G4RotationMatrix& htens) {
+  if (verboseLevel>1) {
+    G4cout << "G4LatticeLogical::SetHoleMassTensor " << htens << G4endl;
+  }
+  // Check if tensor already has electron mass, or is just coefficients
+  G4bool hasHmass = (htens.xx()/mElectron > 1e-3 ||
+                     htens.yy()/mElectron > 1e-3 ||
+                     htens.zz()/mElectron > 1e-3);
+  G4double mscale = hasHmass ? 1. : mElectron;
+  fHoleMassTensor.set(G4Rep3x3(htens.xx()*mscale, 0., 0.,
+                               0., htens.yy()*mscale, 0.,
+                               0., 0., htens.zz()*mscale));
+  FillHoleMassInfo();
+
+ 
+
+}
+
+
 
 // Compute derived quantities from user-input mass tensor
 // apachepersonal.miun.se/~gorthu/halvledare/Effective%20mass%20in%20semiconductors.htm
@@ -789,7 +1090,52 @@ void G4LatticeLogical::FillMassInfo() {
 			      0., 1./fMassRatioSqrt.yy(), 0.,
 			      0., 0., 1./fMassRatioSqrt.zz()));
 }
+//o00o0o Holes
 
+void G4LatticeLogical::FillHoleMassInfo() {
+  // Conductivity (Herring-Vogt) effective mass
+  fHoleMassConductivity = 3. / (1./fHoleMassTensor.xx() +
+                                1./fHoleMassTensor.yy() +
+                                1./fHoleMassTensor.zz());
+
+  // Keep legacy scalar mass for compatibility (used by GetHoleMass())
+  fHoleMass = fHoleMassConductivity;
+
+  // Inverse mass tensor (for velocity calculations)
+  fHoleMassInverse.set(G4Rep3x3(1./fHoleMassTensor.xx(), 0., 0.,
+                                0., 1./fHoleMassTensor.yy(), 0.,
+                                0., 0., 1./fHoleMassTensor.zz()));
+
+  // Square root tensors for Herring-Vogt transformation
+  G4double sqrtMxx = std::sqrt(fHoleMassTensor.xx());
+  G4double sqrtMyy = std::sqrt(fHoleMassTensor.yy());
+  G4double sqrtMzz = std::sqrt(fHoleMassTensor.zz());
+  fSqrtHoleMassTensor.set(G4Rep3x3(sqrtMxx, 0., 0.,
+                                   0., sqrtMyy, 0.,
+                                   0., 0., sqrtMzz));
+  fSqrtHoleInvMassTensor.set(G4Rep3x3(1./sqrtMxx, 0., 0.,
+                                      0., 1./sqrtMyy, 0.,
+                                      0., 0., 1./sqrtMzz));
+ // std::ofstream debugFile("hole_mass_tensor_debug.txt", std::ios::app);
+ //  debugFile << "=== Hole Mass Tensor Information ===" << std::endl;
+ //  debugFile << "Hole mass tensor (m_e units): "
+ //            << fHoleMassTensor.xx()/mElectron << " "
+ //            << fHoleMassTensor.yy()/mElectron << " "
+ //            << fHoleMassTensor.zz()/mElectron << std::endl;
+ //  debugFile << "Hole conductivity mass: " << fHoleMassConductivity/mElectron << " m_e" << std::endl;
+ //  debugFile << "Hole mass tensor (kg): "
+ //            << fHoleMassTensor.xx() << " "
+ //            << fHoleMassTensor.yy() << " "
+ //            << fHoleMassTensor.zz() << std::endl;
+ //  debugFile << "Inverse mass tensor (1/kg): "
+ //            << fHoleMassInverse.xx() << " "
+ //            << fHoleMassInverse.yy() << " "
+ //            << fHoleMassInverse.zz() << std::endl;
+ //  debugFile << "===================================" << std::endl;
+ //  debugFile.close();
+
+
+}
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo....
 
 // Store drifting-electron valley using Euler angles
@@ -983,6 +1329,11 @@ void G4LatticeLogical::Dump(std::ostream& os) const {
      << "\nemass " << fMassTensor.xx()/mElectron
      << " " << fMassTensor.yy()/mElectron
      << " " << fMassTensor.zz()/mElectron << std::endl;
+  
+  os << "# Hole mass tensor (diagonal, m_e units): "
+     << fHoleMassTensor.xx()/mElectron << " "
+     << fHoleMassTensor.yy()/mElectron << " "
+    << fHoleMassTensor.zz()/mElectron << std::endl;
 
   os << "# Inverse mass tensor: " << fMassInverse.xx()*mElectron
      << " " << fMassInverse.yy()*mElectron

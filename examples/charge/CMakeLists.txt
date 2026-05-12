@@ -63,6 +63,10 @@ set(charge_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ChargeElectrodePattern.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ChargeElectrodeSensitivity.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ChargePrimaryGeneratorAction.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ChargeEventAction.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ChargeRunAction.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ChargeStepping.cc
+
     )
 
 set(charge_EPOT_FILES

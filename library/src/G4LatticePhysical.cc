@@ -37,7 +37,7 @@
 #include "G4RotationMatrix.hh"
 #include "G4SystemOfUnits.hh"
 
-
+#include <fstream>
 // Null vector defined for convenience (avoid memory churn)
 
 namespace {
@@ -115,6 +115,19 @@ void G4LatticePhysical::SetMillerOrientation(G4int h, G4int k, G4int l,
   fOrient = G4RotationMatrix::IDENTITY;
   fOrient.rotateZ(rot).rotateY(norm.theta()).rotateZ(norm.phi());
   fInverse = fOrient.inverse();
+   //Write diagnostic to file AND terminal
+  // std::ofstream miller_diag("miller_diagnostic.txt", std::ios::app);
+  // miller_diag << "Miller(" << h << k << l << ") rotation:" << std::endl;
+  // miller_diag << "  fOrient colX: " << fOrient.colX() << std::endl;
+  // miller_diag << "  fOrient colY: " << fOrient.colY() << std::endl;
+  // miller_diag << "  fOrient colZ: " << fOrient.colZ() << std::endl;
+  // miller_diag << "  fInverse colX: " << fInverse.colX() << std::endl;
+  // miller_diag << "  fInverse colY: " << fInverse.colY() << std::endl;
+  // miller_diag << "  fInverse colZ: " << fInverse.colZ() << std::endl;
+  // miller_diag << "----------------------------------------" << std::endl;
+  // miller_diag.close();
+
+   fLattice->SetHoleCrystalRotation(fOrient);
 
   if (verboseLevel>1) G4cout << " fOrient = " << fOrient << G4endl;
 }
@@ -203,6 +216,16 @@ G4LatticePhysical::MapEkintoP(G4int iv, const G4ThreeVector& pdir, const G4doubl
 
   return RotateToSolid(p);
 }
+G4ThreeVector G4LatticePhysical::MapEkintoP_hole(const G4ThreeVector& pdir, G4double Ekin) const {
+#ifdef G4CMP_DEBUG
+  if (verboseLevel>1)
+    G4cout << "G4LatticePhysical::MapEkintoP_hole " << pdir << " " << Ekin << G4endl;
+#endif
+  RotateToLattice(tempvec() = pdir);
+  G4ThreeVector p = fLattice->MapEkintoP_hole(tempvec(), Ekin);
+  return RotateToSolid(p);
+}
+
 
 G4double G4LatticePhysical::MapPtoEkin(G4int iv, const G4ThreeVector& p) const {
 #ifdef G4CMP_DEBUG
@@ -222,6 +245,17 @@ G4double G4LatticePhysical::MapPtoEkin(G4int iv, const G4ThreeVector& p) const {
   return fLattice->MapPtoEkin(iv, tempvec());
 }
 
+G4double G4LatticePhysical::MapPtoEkin_hole(const G4ThreeVector& p) const {
+#ifdef G4CMP_DEBUG
+  if (verboseLevel>1)
+    G4cout << "G4LatticePhysical::MapPtoEkin_hole " << p << G4endl;
+#endif
+  RotateToLattice(tempvec() = p);
+  return fLattice->MapPtoEkin_hole(tempvec());
+}
+
+
+
 G4double G4LatticePhysical::MapV_elToEkin(G4int iv, const G4ThreeVector& v) const {
 #ifdef G4CMP_DEBUG
   if (verboseLevel>1)
@@ -239,6 +273,16 @@ G4double G4LatticePhysical::MapV_elToEkin(G4int iv, const G4ThreeVector& v) cons
 
   return fLattice->MapV_elToEkin(iv, tempvec());
 }
+
+G4double G4LatticePhysical::MapV_holeToEkin(const G4ThreeVector& v) const {
+#ifdef G4CMP_DEBUG
+  if (verboseLevel>1)
+    G4cout << "G4LatticePhysical::MapV_holeToEkin " << v << G4endl;
+#endif
+  RotateToLattice(tempvec() = v);
+  return fLattice->MapV_holeToEkin(tempvec());
+}
+
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo....
 
@@ -264,7 +308,15 @@ G4LatticePhysical::MapPtoV_el(G4int ivalley, const G4ThreeVector& p_e) const {
 
   return RotateToSolid(tempvec());
 }
-
+G4ThreeVector G4LatticePhysical::MapPtoV_hole(const G4ThreeVector& p) const {
+#ifdef G4CMP_DEBUG
+  if (verboseLevel>1)
+    G4cout << "G4LatticePhysical::MapPtoV_hole " << p << G4endl;
+#endif
+  RotateToLattice(tempvec() = p);
+  tempvec() = fLattice->MapPtoV_hole(tempvec());
+  return RotateToSolid(tempvec());
+}
 G4ThreeVector 
 G4LatticePhysical::MapV_elToP(G4int ivalley, const G4ThreeVector& v_e) const {
 #ifdef G4CMP_DEBUG
@@ -285,6 +337,16 @@ G4LatticePhysical::MapV_elToP(G4int ivalley, const G4ThreeVector& v_e) const {
 
   return RotateToSolid(tempvec());
 }
+G4ThreeVector G4LatticePhysical::MapV_holeToP(const G4ThreeVector& v) const {
+#ifdef G4CMP_DEBUG
+  if (verboseLevel>1)
+    G4cout << "G4LatticePhysical::MapV_holeToP " << v << G4endl;
+#endif
+  RotateToLattice(tempvec() = v);
+  tempvec() = fLattice->MapV_holeToP(tempvec());
+  return RotateToSolid(tempvec());
+}
+
 
 G4ThreeVector 
 G4LatticePhysical::MapPToP_Q(G4int ivalley, const G4ThreeVector& P) const {
@@ -306,6 +368,17 @@ G4LatticePhysical::MapPToP_Q(G4int ivalley, const G4ThreeVector& P) const {
 
   return RotateToSolid(tempvec());
 }
+G4ThreeVector G4LatticePhysical::MapPToP_Q_hole(const G4ThreeVector& P) const {
+#ifdef G4CMP_DEBUG
+  if (verboseLevel>1)
+    G4cout << "G4LatticePhysical::MapPToP_Q_hole " << P << G4endl;
+#endif
+  RotateToLattice(tempvec() = P);
+  tempvec() = fLattice->MapPToP_Q_hole(tempvec());
+  return RotateToSolid(tempvec());
+}
+
+
 
 G4ThreeVector 
 G4LatticePhysical::MapP_QToP(G4int ivalley, const G4ThreeVector& P_Q) const {
@@ -328,6 +401,18 @@ G4LatticePhysical::MapP_QToP(G4int ivalley, const G4ThreeVector& P_Q) const {
   return RotateToSolid(tempvec());
 }
 
+
+G4ThreeVector G4LatticePhysical::MapP_QToP_hole(const G4ThreeVector& P_Q) const {
+#ifdef G4CMP_DEBUG
+  if (verboseLevel>1)
+    G4cout << "G4LatticePhysical::MapP_QToP_hole " << P_Q << G4endl;
+#endif
+  RotateToLattice(tempvec() = P_Q);
+  tempvec() = fLattice->MapP_QToP_hole(tempvec());
+  return RotateToSolid(tempvec());
+}
+
+
 G4ThreeVector
 G4LatticePhysical::MapV_elToK(G4int ivalley, const G4ThreeVector& v_e) const {
 #ifdef G4CMP_DEBUG
@@ -346,6 +431,16 @@ G4LatticePhysical::MapV_elToK(G4int ivalley, const G4ThreeVector& v_e) const {
   if (verboseLevel>1) G4cout << " K (lattice) " << tempvec() << G4endl;
 #endif
 
+  return RotateToSolid(tempvec());
+}
+
+G4ThreeVector G4LatticePhysical::MapV_holeToK(const G4ThreeVector& v) const {
+#ifdef G4CMP_DEBUG
+  if (verboseLevel>1)
+    G4cout << "G4LatticePhysical::MapV_holeToK " << v << G4endl;
+#endif
+  RotateToLattice(tempvec() = v);
+  tempvec() = fLattice->MapV_holeToK(tempvec());
   return RotateToSolid(tempvec());
 }
 
@@ -370,6 +465,16 @@ G4LatticePhysical::MapPtoK(G4int ivalley, const G4ThreeVector& p_e) const {
   return RotateToSolid(tempvec());
 }
 
+G4ThreeVector G4LatticePhysical::MapPtoK_hole(const G4ThreeVector& p) const {
+#ifdef G4CMP_DEBUG
+  if (verboseLevel>1)
+    G4cout << "G4LatticePhysical::MapPtoK_hole " << p << G4endl;
+#endif
+  RotateToLattice(tempvec() = p);
+  tempvec() = fLattice->MapPtoK_hole(tempvec());
+  return RotateToSolid(tempvec());
+}
+
 G4ThreeVector 
 G4LatticePhysical::MapKtoP(G4int ivalley, const G4ThreeVector& k) const {
 #ifdef G4CMP_DEBUG
@@ -391,6 +496,17 @@ G4LatticePhysical::MapKtoP(G4int ivalley, const G4ThreeVector& k) const {
   return RotateToSolid(tempvec());
 }
 
+G4ThreeVector G4LatticePhysical::MapKtoP_hole(const G4ThreeVector& k) const {
+#ifdef G4CMP_DEBUG
+  if (verboseLevel>1)
+    G4cout << "G4LatticePhysical::MapKtoP_hole " << k << G4endl;
+#endif
+  RotateToLattice(tempvec() = k);
+  tempvec() = fLattice->MapKtoP_hole(tempvec());
+  return RotateToSolid(tempvec());
+}
+
+
 G4double 
 G4LatticePhysical::GetElectronEffectiveMass(G4int iv,
 					   const G4ThreeVector& p) const {
@@ -407,6 +523,24 @@ G4LatticePhysical::GetElectronEffectiveMass(G4int iv,
 
   return fLattice->GetElectronEffectiveMass(iv, tempvec());
 }
+
+// G4double G4LatticePhysical::GetHoleEffectiveMass(const G4ThreeVector& p) const {
+// #ifdef G4CMP_DEBUG
+//   if (verboseLevel>1)
+//     G4cout << "G4LatticePhysical::GetHoleEffectiveMass (momentum) " << p << G4endl;
+// #endif
+//   RotateToLattice(tempvec() = p);
+//   return fLattice->GetHoleEffectiveMass(tempvec());
+// }
+G4double G4LatticePhysical::GetHoleEffectiveMass(const G4ThreeVector& v) const {
+#ifdef G4CMP_DEBUG
+  if (verboseLevel>1)
+    G4cout << "G4LatticePhysical::GetHoleEffectiveMass " << v << G4endl;
+#endif
+  RotateToLattice(tempvec() = v);
+  return fLattice->GetHoleEffectiveMass(tempvec());
+}
+
 
 G4ThreeVector
 G4LatticePhysical::RotateToValley(G4int iv, const G4ThreeVector& v) const {
@@ -452,6 +586,15 @@ EllipsoidalToSphericalTranformation(G4int iv, const G4ThreeVector& v) const {
 
   return fLattice->EllipsoidalToSphericalTranformation(iv, tempvec());
 }
+G4ThreeVector G4LatticePhysical::HoleEllipsoidalToSphericalTransformation(const G4ThreeVector& v) const {
+#ifdef G4CMP_DEBUG
+  if (verboseLevel>1)
+    G4cout << "G4LatticePhysical::HoleEllipsoidalToSphericalTransformation " << v << G4endl;
+#endif
+  RotateToLattice(tempvec() = v);
+  tempvec() = fLattice->HoleEllipsoidalToSphericalTransformation(tempvec());
+  return RotateToSolid(tempvec());
+}
 
 // Compute vector in ellipsoidal frame from the spherical frame
 
@@ -464,6 +607,15 @@ SphericalToEllipsoidalTranformation(G4int iv, const G4ThreeVector& v) const {
 #endif
 
   tempvec() = fLattice->SphericalToEllipsoidalTranformation(iv, v);
+  return RotateToSolid(tempvec());
+}
+G4ThreeVector G4LatticePhysical::HoleSphericalToEllipsoidalTransformation(const G4ThreeVector& v) const {
+#ifdef G4CMP_DEBUG
+  if (verboseLevel>1)
+    G4cout << "G4LatticePhysical::HoleSphericalToEllipsoidalTransformation " << v << G4endl;
+#endif
+  RotateToLattice(tempvec() = v);
+  tempvec() = fLattice->HoleSphericalToEllipsoidalTransformation(tempvec());
   return RotateToSolid(tempvec());
 }
 

@@ -73,7 +73,7 @@
 #include "G4VParticleChange.hh"
 #include "G4VPhysicalVolume.hh"
 #include <math.h>
-
+#include <fstream>
 G4CMPTimeStepper::G4CMPTimeStepper()
   : G4CMPVDriftProcess("G4CMPTimeStepper", fTimeStepper), lukeRate(nullptr),
     ivRate(nullptr) {;}
@@ -196,6 +196,15 @@ G4double G4CMPTimeStepper::GetMeanFreePath(const G4Track& aTrack, G4double,
 G4VParticleChange* G4CMPTimeStepper::PostStepDoIt(const G4Track& aTrack,
 						  const G4Step& aStep) {
   InitializeParticleChange(GetValleyIndex(aTrack), aTrack);
+  // Debug: write hole momentum and velocity (from MapPtoV_hole) to file
+// if (IsHole()) {
+//     static std::ofstream debugFile("time_stepper_vel.txt", std::ios::app);
+//     if (debugFile.is_open()) {
+//         G4ThreeVector p = GetLocalMomentum(aTrack);
+//         G4ThreeVector v = theLattice->MapPtoV_hole(p);
+//         debugFile << "Step: p=" << p << " v=" << v << std::endl;
+//     }
+// }
 
   // Report basic kinematics
   if (verboseLevel) {

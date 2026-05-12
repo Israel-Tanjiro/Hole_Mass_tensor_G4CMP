@@ -111,11 +111,34 @@ public:
   G4ThreeVector MapPtoK(G4int ivalley, const G4ThreeVector& p_e) const;
   G4ThreeVector MapKtoP(G4int ivalley, const G4ThreeVector& k) const ;
   G4ThreeVector MapEkintoP(G4int iv, const G4ThreeVector& pdir, const G4double Ekin) const;
-
-  // Apply energy relationships for electron transport
   G4double MapPtoEkin(G4int ivalley, const G4ThreeVector& p_e) const;
   G4double MapP_QtoEkin(G4int ivalley, const G4ThreeVector& p_e) const;
   G4double MapV_elToEkin(G4int ivalley, const G4ThreeVector& v_e) const;
+  ///o0o0o0o0o0oo0Holes Functions
+  // Hole mapping functions (Gamma point, no valleys)
+// These mirror the electron functions but without valley indices.
+G4ThreeVector MapPtoV_hole(const G4ThreeVector& p) const;
+G4ThreeVector MapV_holeToP(const G4ThreeVector& v) const;
+G4ThreeVector MapP_QToP_hole(const G4ThreeVector& P_Q) const;
+G4ThreeVector MapPToP_Q_hole(const G4ThreeVector& P) const;
+G4ThreeVector MapV_holeToK(const G4ThreeVector& v) const;
+G4ThreeVector MapPtoK_hole(const G4ThreeVector& p) const;
+G4ThreeVector MapKtoP_hole(const G4ThreeVector& k) const;
+G4ThreeVector MapEkintoP_hole(const G4ThreeVector& pdir, G4double Ekin) const;
+G4double MapP_QtoEkin_hole( const G4ThreeVector& p_e) const;
+
+// Herring‑Vogt transformations for holes (no valleys)
+G4ThreeVector HoleEllipsoidalToSphericalTransformation(const G4ThreeVector& v) const;
+G4ThreeVector HoleSphericalToEllipsoidalTransformation(const G4ThreeVector& v) const;
+void SetHoleCrystalRotation(const G4RotationMatrix& latticeToCrystal) const;
+
+// Energy mappings for holes
+G4double MapPtoEkin_hole(const G4ThreeVector& p) const;
+G4double MapV_holeToEkin(const G4ThreeVector& v) const;
+
+///-----o0o0o0o0o0o0o0o0 End of the Holes 
+  // Apply energy relationships for electron transport
+  
 
   // Configure crystal symmetry group and lattice spacing/angles
   void SetCrystal(G4CMPCrystalGroup::Bravais group, G4double a, G4double b,
@@ -196,6 +219,9 @@ public:
   void SetElectronScatter(G4double l0) { fL0_e = l0; }
   void SetMassTensor(const G4RotationMatrix& etens);
   void SetMassTensor(G4double mXX, G4double mYY, G4double mZZ);
+  // Hole mass tensor (diagonal) – for anisotropic Luke scattering
+  void SetHoleMassTensor(G4double mXX, G4double mYY, G4double mZZ);
+  void SetHoleMassTensor(const G4RotationMatrix& htens) ;
 
   G4double GetBandGapEnergy() const             { return fBandGap; }
   G4double GetPairProductionEnergy() const      { return fPairEnergy; }
@@ -211,9 +237,18 @@ public:
   const G4RotationMatrix& GetMInvTensor() const { return fMassInverse; }
   const G4RotationMatrix& GetSqrtTensor() const { return fMassRatioSqrt; }
   const G4RotationMatrix& GetSqrtInvTensor() const { return fMInvRatioSqrt; }
+///o0o0o0o0o0o
+ const G4RotationMatrix& GetHoleMassTensor() const { return fHoleMassTensor; }
+ const G4RotationMatrix& GetHoleMInvTensor() const { return fHoleMassInverse; }
+ const G4RotationMatrix& GetSqrtHoleTensor() const { return fSqrtHoleMassTensor; }
+ const G4RotationMatrix& GetSqrtHoleInvTensor() const { return fSqrtHoleInvMassTensor; }
 
+ G4double GetHoleConductivityMass() const { return fHoleMassConductivity; }
+ //o0o0o0o0o0o0o0o0o0o
   // Compute "effective mass" for electron to preserve E/p relationship
   G4double GetElectronEffectiveMass(G4int iv, const G4ThreeVector& p) const;
+  // Compute effective mass for holes from momentum (no valleys)
+   G4double GetHoleEffectiveMass(const G4ThreeVector& p) const;
     
   // Compute "l0" for electron and hole
   G4double ComputeL0(G4bool IsElec);
@@ -298,6 +333,7 @@ private:
   void FillElasticity();	// Unpack reduced Cij into full Cijlk
   void FillMaps();	// Populate lookup tables using kinematics calculator
   void FillMassInfo();	// Called from SetMassTensor() to compute derived forms
+  void FillHoleMassInfo();  // Called from SetMassTensor() to compute derived forms
 
   // Get theta, phi bins and offsets for interpolation
   G4bool FindLookupBins(const G4ThreeVector& k, G4int& iTheta, G4int& iPhi,
@@ -358,6 +394,7 @@ private:
 
   const G4double mElectron;	 // Free electron mass (without G4's c^2)
   G4double fHoleMass;		 // Effective mass of +ve carrier
+  G4double fHoleMassConductivity;          // Isotropic conductivity mass (3/(1/mxx+1/myy+1/mzz))
   G4double fElectronMass;	 // Effective mass (scalar) of -ve carrier
   G4double fElectronMDOS;	 // Density of states weighed -ve carrier mass
 
@@ -368,6 +405,14 @@ private:
   G4RotationMatrix fMassInverse; // Inverse electron mass tensor (convenience)
   G4RotationMatrix fMassRatioSqrt;       // SQRT of tensor/scalar ratio
   G4RotationMatrix fMInvRatioSqrt;       // SQRT of scalar/tensor ratio
+  //0o0o0o0o0o--here New for Hole Mass Tensors
+  G4RotationMatrix fHoleMassTensor;        // Diagonal mass tensor (kg)
+  G4RotationMatrix fHoleMassInverse;       // Inverse
+  G4RotationMatrix fSqrtHoleMassTensor;    // sqrt(M)
+  G4RotationMatrix fSqrtHoleInvMassTensor; // 1/sqrt(M)
+  mutable G4RotationMatrix fHoleToCrystal; // Rotation: lattice -> crystal frame
+
+  
   std::vector<G4RotationMatrix> fValley; // Electron transport directions
   std::vector<G4RotationMatrix> fValleyInv;
   std::vector<G4ThreeVector> fValleyAxis;
