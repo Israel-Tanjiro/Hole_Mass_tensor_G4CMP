@@ -56,6 +56,7 @@
 #include "G4PhononPolarization.hh"
 #include <iosfwd>
 #include <vector>
+#include "G4CMPPolaronFormation.hh"
 
 class G4CMPPhononKinematics;
 class G4CMPPhononKinTable;
@@ -222,6 +223,11 @@ G4double MapV_holeToEkin(const G4ThreeVector& v) const;
   // Hole mass tensor (diagonal) – for anisotropic Luke scattering
   void SetHoleMassTensor(G4double mXX, G4double mYY, G4double mZZ);
   void SetHoleMassTensor(const G4RotationMatrix& htens) ;
+  // Polaron parameters
+void SetElectronMassFactor(G4double factor) { fElectronMassFactor = factor; }
+void SetHoleMassFactor(G4double factor) { fHoleMassFactor = factor; }
+void SetPolaronFormationEnergy(G4double eV) { fPolaronFormationEnergy = eV; }
+void SetFrohlichCoupling(G4double alpha) { fAlpha = alpha; }
 
   G4double GetBandGapEnergy() const             { return fBandGap; }
   G4double GetPairProductionEnergy() const      { return fPairEnergy; }
@@ -249,6 +255,11 @@ G4double MapV_holeToEkin(const G4ThreeVector& v) const;
   G4double GetElectronEffectiveMass(G4int iv, const G4ThreeVector& p) const;
   // Compute effective mass for holes from momentum (no valleys)
    G4double GetHoleEffectiveMass(const G4ThreeVector& p) const;
+   //---Polarons
+  G4double GetElectronMassFactor() const { return fElectronMassFactor; }
+  G4double GetHoleMassFactor() const { return fHoleMassFactor; }
+  G4double GetPolaronFormationEnergy() const { return fPolaronFormationEnergy; }
+  G4double GetFrohlichCoupling() const { return fAlpha; }
     
   // Compute "l0" for electron and hole
   G4double ComputeL0(G4bool IsElec);
@@ -411,6 +422,10 @@ private:
   G4RotationMatrix fSqrtHoleMassTensor;    // sqrt(M)
   G4RotationMatrix fSqrtHoleInvMassTensor; // 1/sqrt(M)
   mutable G4RotationMatrix fHoleToCrystal; // Rotation: lattice -> crystal frame
+
+  G4double fElectronMassFactor;      // ← ADD THESE
+  G4double fHoleMassFactor;
+  G4double fPolaronFormationEnergy;
 
   
   std::vector<G4RotationMatrix> fValley; // Electron transport directions

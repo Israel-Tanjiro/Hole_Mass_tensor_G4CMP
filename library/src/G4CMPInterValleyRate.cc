@@ -59,7 +59,7 @@ G4double G4CMPInterValleyRate::Rate(const G4Track& aTrack) const {
 
   G4double orate = opticalRate();
   if (verboseLevel>2) G4cout << "IV phonons  " << orate/hertz << " Hz" << G4endl;
- 
+
   G4double nrate = scatterRate();
   if (verboseLevel>2) G4cout << "IV neutrals " << nrate/hertz << " Hz" << G4endl;
 

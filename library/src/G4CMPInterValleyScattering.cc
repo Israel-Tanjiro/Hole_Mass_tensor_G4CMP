@@ -35,11 +35,13 @@
 #include "G4CMPInterValleyRate.hh"
 #include "G4CMPIVRateQuadratic.hh"
 #include "G4CMPIVRateLinear.hh"
+#include "G4CMPPolaronInfo.hh"
 #include "G4StrUtil.hh"
 #include "G4CMPTimeStepper.hh"
 #include "G4CMPTrackUtils.hh"
 #include "G4CMPUtils.hh"
 #include "G4LatticePhysical.hh"
+#include "G4ParticleChangeForLoss.hh"
 #include "G4Step.hh"
 #include "G4StepPoint.hh"
 #include "G4ThreeVector.hh"
@@ -112,9 +114,23 @@ G4double G4CMPInterValleyScattering::GetMeanFreePath(const G4Track& track,
 
 // Perform scattering action
 
-G4VParticleChange* 
-G4CMPInterValleyScattering::PostStepDoIt(const G4Track& aTrack, 
+G4VParticleChange*
+G4CMPInterValleyScattering::PostStepDoIt(const G4Track& aTrack,
 					 const G4Step& aStep) {
+  // SKIP POLARONS: Only bare carriers undergo intervalley scattering
+  // Polarons use IntraValleyScattering instead
+  const G4VUserTrackInformation* userInfo = aTrack.GetUserInformation();
+  if (userInfo) {
+    const G4CMPPolaronInfo* polaronInfo =
+      dynamic_cast<const G4CMPPolaronInfo*>(userInfo);
+    if (polaronInfo && polaronInfo->IsPolaron()) {
+      // This is a polaron - skip intervalley scattering
+      G4ParticleChangeForLoss* pChange = new G4ParticleChangeForLoss();
+      pChange->InitializeForPostStep(aTrack);
+      return pChange;
+    }
+  }
+
   InitializeParticleChange(GetValleyIndex(aTrack), aTrack);
   G4StepPoint* postStepPoint = aStep.GetPostStepPoint();
   

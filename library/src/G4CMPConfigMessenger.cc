@@ -68,7 +68,8 @@ G4CMPConfigMessenger::G4CMPConfigMessenger(G4CMPConfigManager* mgr)
     hATrapIonMFPCmd(0), tempCmd(0), pSurfStepSizeCmd(0), minstepCmd(0),
     makePhononCmd(0), makeChargeCmd(0), lukePhononCmd(0), dirCmd(0),
     lukeFileCmd(0), ivRateModelCmd(0), nielPartitionCmd(0), kvmapCmd(0),
-    fanoStatsCmd(0), kaplanKeepCmd(0), ehCloudCmd(0), recordMinECmd(0) {
+    fanoStatsCmd(0), kaplanKeepCmd(0), ehCloudCmd(0), recordMinECmd(0),
+    polaronActiveCmd(0), polaronEnergyCmd(0), polaronEfficiencyCmd(0) {
   verboseCmd = CreateCommand<G4UIcmdWithAnInteger>("verbose",
 					   "Enable diagnostic messages");
 
@@ -238,6 +239,22 @@ G4CMPConfigMessenger::G4CMPConfigMessenger(G4CMPConfigManager* mgr)
   EmpEhighCmd = CreateCommand<G4UIcmdWithADoubleAndUnit>("/g4cmp/NIELPartition/Empirical/Ehigh",
       "Set Ehigh parameter for Emp Lindhard model.");
   EmpEhighCmd->SetUnitCategory("Energy");
+
+
+polaronActiveCmd = CreateCommand<G4UIcmdWithABool>("polaronActive",
+                                 "Enable/disable polaron formation");
+polaronActiveCmd->SetParameterName("active", false);
+polaronActiveCmd->SetDefaultValue(true);
+
+polaronEnergyCmd = CreateCommand<G4UIcmdWithADoubleAndUnit>("polaronFormationEnergy",
+                               "Set polaron formation energy (Stokes shift)");
+polaronEnergyCmd->SetUnitCategory("Energy");
+polaronEnergyCmd->SetDefaultValue(0.75);
+polaronEnergyCmd->SetDefaultUnit("eV");
+
+polaronEfficiencyCmd = CreateCommand<G4UIcmdWithADouble>("polaronPhononEfficiency",
+                                   "Set phonon efficiency fraction (0-1)");
+polaronEfficiencyCmd->SetDefaultValue(0.75);
 }
 
 G4CMPConfigMessenger::~G4CMPConfigMessenger() {
@@ -283,6 +300,9 @@ G4CMPConfigMessenger::~G4CMPConfigMessenger() {
   delete EmpEhighCmd; EmpEhighCmd = 0;
   delete EmpkFixedCmd; EmpkFixedCmd = 0;
   delete EmpEDepKCmd; EmpEDepKCmd = 0;
+  delete polaronActiveCmd; polaronActiveCmd=0;
+  delete polaronEnergyCmd; polaronEnergyCmd=0;
+  delete polaronEfficiencyCmd; polaronEfficiencyCmd=0;
 }
 
 // Parse user input and add to configuration
@@ -378,4 +398,8 @@ void G4CMPConfigMessenger::SetNewValue(G4UIcommand* cmd, G4String value) {
 
   if (cmd == EmpEDepKCmd)
     theManager->SetEmpEDepK(EmpEDepKCmd->GetNewBoolValue(value));
+
+  if (cmd == polaronActiveCmd) theManager->SetPolaronActive(StoB(value));
+  if (cmd == polaronEnergyCmd) theManager->SetPolaronFormationEnergy(polaronEnergyCmd->GetNewDoubleValue(value));
+  if (cmd == polaronEfficiencyCmd) theManager->SetPolaronPhononEfficiency(StoD(value));
 }

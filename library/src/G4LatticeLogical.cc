@@ -96,6 +96,8 @@ G4LatticeLogical::G4LatticeLogical(const G4String& name)
     fMassTensor(G4Rep3x3(mElectron,0.,0.,0.,mElectron,0.,0.,0.,mElectron)),
     fMassInverse(G4Rep3x3(1/mElectron,0.,0.,0.,1/mElectron,0.,0.,0.,1/mElectron)),
     fAlpha(0.), fAcDeform_e(0.), fAcDeform_h(0.),
+    fElectronMassFactor(1.0), fHoleMassFactor(1.0),
+    fPolaronFormationEnergy(1.0 * eV),
     fIVQuadField(0.), fIVQuadRate(0.), fIVQuadExponent(0.),
     fIVLinExponent(0.), fIVLinRate0(0.), fIVLinRate1(0.),
     fIVModel(G4CMPConfigManager::GetIVRateModel()) {
@@ -171,6 +173,9 @@ G4LatticeLogical& G4LatticeLogical::operator=(const G4LatticeLogical& rhs) {
   fAlpha = rhs.fAlpha;
   fAcDeform_e = rhs.fAcDeform_e;
   fAcDeform_h = rhs.fAcDeform_h;
+  fElectronMassFactor = rhs.fElectronMassFactor;
+  fHoleMassFactor = rhs.fHoleMassFactor;
+  fPolaronFormationEnergy = rhs.fPolaronFormationEnergy;
   fIVDeform = rhs.fIVDeform;
   fIVEnergy = rhs.fIVEnergy;
   fIVQuadField = rhs.fIVQuadField;
@@ -180,6 +185,7 @@ G4LatticeLogical& G4LatticeLogical::operator=(const G4LatticeLogical& rhs) {
   fIVLinRate0 = rhs.fIVLinRate0;
   fIVLinRate1 = rhs.fIVLinRate1;
   fIVModel = rhs.fIVModel;
+
   
   if (!rhs.fpPhononKin)   fpPhononKin = new G4CMPPhononKinematics(this);
   if (!rhs.fpPhononTable) fpPhononTable = new G4CMPPhononKinTable(fpPhononKin);

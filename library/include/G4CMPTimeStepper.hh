@@ -50,8 +50,9 @@ public:
   // Allow external process to supply rate model
   void UseLukeRateModel(const G4CMPVScatteringRate* aRate) { lukeRate = aRate; }
   void UseIVRateModel(const G4CMPVScatteringRate* aRate)   { ivRate = aRate; }
+  void UseIntraValleyRateModel(const G4CMPVScatteringRate* aRate) { intraValleyRate = aRate; }
 
-protected:  
+protected:
   virtual G4double GetMeanFreePath(const G4Track&,G4double,G4ForceCondition*);
 
   // Maximum rate for other processes, given track kinematics
@@ -68,6 +69,7 @@ protected:
   // Pointers may be changed from Use functions
   const G4CMPVScatteringRate* lukeRate;
   const G4CMPVScatteringRate* ivRate;
+  const G4CMPVScatteringRate* intraValleyRate;
 
 private:
   //hide assignment operator
