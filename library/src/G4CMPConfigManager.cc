@@ -133,6 +133,9 @@ G4CMPConfigManager::G4CMPConfigManager()
     EmpEhigh(getenv("G4CMP_EMPIRICAL_EHIGH")?strtod(getenv("G4CMP_EMPIRICAL_EHIGH"),0)*keV:7.0*keV),
     EmpEDepK(getenv("G4CMP_EMPIRICAL_EDEPK")?(atoi(getenv("G4CMP_EMPIRICAL_EDEPK"))!=0):true),
     EmpkFixed(getenv("G4CMP_EMPIRICAL_KFIXED")?strtod(getenv("G4CMP_EMPIRICAL_KFIXED"),0):0.158),
+    polaronActive(getenv("G4CMP_POLARON_ACTIVE")?atoi(getenv("G4CMP_POLARON_ACTIVE")):1),
+polaronFormationEnergy(getenv("G4CMP_POLARON_ENERGY")?strtod(getenv("G4CMP_POLARON_ENERGY"),0)*eV:0.75*eV),
+polaronPhononEfficiency(getenv("G4CMP_POLARON_EFFICIENCY")?strtod(getenv("G4CMP_POLARON_EFFICIENCY"),0):0.75),
     messenger(new G4CMPConfigMessenger(this)) {
   fPhysicsModelID = setPhysicsModelID();
   setVersion();

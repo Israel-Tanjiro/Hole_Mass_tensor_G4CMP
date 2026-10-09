@@ -76,7 +76,7 @@
 #include <fstream>
 G4CMPTimeStepper::G4CMPTimeStepper()
   : G4CMPVDriftProcess("G4CMPTimeStepper", fTimeStepper), lukeRate(nullptr),
-    ivRate(nullptr) {;}
+    ivRate(nullptr), intraValleyRate(nullptr) {;}
 
 G4CMPTimeStepper::~G4CMPTimeStepper() {;}
 
@@ -105,13 +105,22 @@ LoadDataForTrack(const G4Track* aTrack, const G4bool /*overrideMomentumReset*/) 
     dynamic_cast<G4CMPVProcess*>(G4CMP::FindProcess(aTrack,
 					    "G4CMPInterValleyScattering"));
   ivRate = ivProc ? ivProc->GetRateModel() : nullptr;
-  if (ivRate) 
+  if (ivRate)
     const_cast<G4CMPVScatteringRate*>(ivRate)->LoadDataForTrack(aTrack);
 
+  // Get rate model for intravalley scattering from process (polarons in single-valley)
+  const G4CMPVProcess* intraProc =
+    dynamic_cast<G4CMPVProcess*>(G4CMP::FindProcess(aTrack,
+					    "G4CMPIntraValleyScattering"));
+  intraValleyRate = intraProc ? intraProc->GetRateModel() : nullptr;
+  if (intraValleyRate)
+    const_cast<G4CMPVScatteringRate*>(intraValleyRate)->LoadDataForTrack(aTrack);
+
   if (verboseLevel>1) {
-    G4cout << "TimeStepper Found" 
+    G4cout << "TimeStepper Found"
 	   << (lukeRate?" lukeRate":"")
-	   << (ivRate?" ivRate":"") 
+	   << (ivRate?" ivRate":"")
+	   << (intraValleyRate?" intraValleyRate":"")
 	   << G4endl;
   }
 
@@ -121,6 +130,9 @@ LoadDataForTrack(const G4Track* aTrack, const G4bool /*overrideMomentumReset*/) 
 
   if (ivRate && ivRate->GetVerboseLevel() < verboseLevel)
     const_cast<G4CMPVScatteringRate*>(ivRate)->SetVerboseLevel(verboseLevel);
+
+  if (intraValleyRate && intraValleyRate->GetVerboseLevel() < verboseLevel)
+    const_cast<G4CMPVScatteringRate*>(intraValleyRate)->SetVerboseLevel(verboseLevel);
 }
 
 
@@ -261,13 +273,14 @@ G4VParticleChange* G4CMPTimeStepper::PostStepDoIt(const G4Track& aTrack,
 G4double G4CMPTimeStepper::MaxRate(const G4Track& aTrack) const {
   G4double lrate = lukeRate ? lukeRate->Rate(aTrack) : 0.;
   G4double irate = ivRate ? ivRate->Rate(aTrack) : 0.;
+  G4double intraRate = intraValleyRate ? intraValleyRate->Rate(aTrack) : 0.;
 
   if (verboseLevel>2) {
     G4cout << "G4CMPTimeStepper::MaxRate luke " << lrate/hertz << " iv "
-	   << irate/hertz << " Hz" << G4endl;
+	   << irate/hertz << " intraValley " << intraRate/hertz << " Hz" << G4endl;
   }
 
-  return std::max(lrate,irate);
+  return std::max({lrate, irate, intraRate});
 }
 
 

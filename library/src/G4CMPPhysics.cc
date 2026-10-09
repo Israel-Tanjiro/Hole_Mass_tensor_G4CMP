@@ -71,6 +71,8 @@
 #include "G4PionZero.hh"
 #include "G4ProcessManager.hh"
 #include "G4Proton.hh"
+#include "G4CMPPolaronFormation.hh"
+#include "G4CMPIntraValleyScattering.hh"
 
 // Constructor sets global verbosity
 
@@ -133,6 +135,8 @@ void G4CMPPhysics::ConstructProcess() {
   G4VProcess* recomb  = new G4CMPDriftRecombinationProcess;
   G4VProcess* eLimit  = new G4CMPTrackLimiter;
   G4VProcess* trapping = new G4CMPDriftTrappingProcess;
+  G4VProcess* polaron = new G4CMPPolaronFormation;// New
+  G4VProcess* intraValley = new G4CMPIntraValleyScattering();
 
   // NOTE: Trap ionization needs separate instances for each particle type
   G4ParticleDefinition* edrift = G4CMPDriftElectron::Definition();
@@ -154,7 +158,7 @@ void G4CMPPhysics::ConstructProcess() {
   AddG4CMPProcess(bogQPRecomb,particle);
   //EY since QP transport is not a discrete process adding to process manager directly
   particle->GetProcessManager()->AddProcess(qpDiffusion,ordInActive,ordDefault,ordDefault);
-    
+
   particle = G4PhononLong::PhononDefinition();
   AddG4CMPProcess(phScat, particle);
   AddG4CMPProcess(phDown, particle);
@@ -162,7 +166,7 @@ void G4CMPPhysics::ConstructProcess() {
   AddG4CMPProcess(eLimit, particle);
   AddG4CMPProcess(phPolyElScat, particle);
   AddG4CMPProcess(phCPbreak,particle);
-  
+
   particle = G4PhononTransSlow::PhononDefinition();
   AddG4CMPProcess(phScat, particle);
   AddG4CMPProcess(phDown, particle);
@@ -170,7 +174,7 @@ void G4CMPPhysics::ConstructProcess() {
   AddG4CMPProcess(eLimit, particle);
   AddG4CMPProcess(phPolyElScat, particle);
   AddG4CMPProcess(phCPbreak,particle);
-  
+
   particle = G4PhononTransFast::PhononDefinition();
   AddG4CMPProcess(phScat, particle);
   AddG4CMPProcess(phDown, particle);
@@ -178,10 +182,12 @@ void G4CMPPhysics::ConstructProcess() {
   AddG4CMPProcess(eLimit, particle);
   AddG4CMPProcess(phPolyElScat, particle);
   AddG4CMPProcess(phCPbreak,particle);
-  
+
   particle = edrift;
-  AddG4CMPProcess(tmStep, particle);
-  AddG4CMPProcess(luke, particle);
+  AddG4CMPProcess(tmStep, particle);      // Disabled: Only test IntraValley scattering
+   AddG4CMPProcess(luke, particle);       // Disabled: Only test IntraValley scattering
+  AddG4CMPProcess(polaron, particle);     // ✓ Marks carriers as polarons
+  //AddG4CMPProcess(intraValley, particle); // ✓ Scatters ONLY polarons (IntraValley)
   AddG4CMPProcess(ivScat, particle);
   AddG4CMPProcess(driftB, particle);
   AddG4CMPProcess(recomb, particle);
@@ -191,8 +197,10 @@ void G4CMPPhysics::ConstructProcess() {
   AddG4CMPProcess(ehTrpI, particle);
 
   particle = hdrift;
-  AddG4CMPProcess(tmStep, particle);
-  AddG4CMPProcess(luke, particle);
+  AddG4CMPProcess(tmStep, particle);      // Disabled: Only test IntraValley scattering
+   AddG4CMPProcess(luke, particle);       // Disabled: Only test IntraValley scattering
+  AddG4CMPProcess(polaron, particle);     // ✓ Marks carriers as polarons
+  //AddG4CMPProcess(intraValley, particle); // ✓ Scatters ONLY polarons (IntraValley)
   AddG4CMPProcess(driftB, particle);
   AddG4CMPProcess(recomb, particle);
   AddG4CMPProcess(eLimit, particle);
@@ -222,6 +230,6 @@ void G4CMPPhysics::AddSecondaryProduction() {
   pIter->reset();
   while ((*pIter)()) {
     G4ParticleDefinition* particle = pIter->value();
-    if (maker->IsApplicable(*particle)) AddG4CMPProcess(maker, particle); 
+    if (maker->IsApplicable(*particle)) AddG4CMPProcess(maker, particle);
   }
 }

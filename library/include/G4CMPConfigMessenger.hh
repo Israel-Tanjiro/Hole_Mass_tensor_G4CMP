@@ -107,6 +107,9 @@ private:
   G4UIcmdWithABool*   kaplanKeepCmd;
   G4UIcmdWithABool*   ehCloudCmd;
   G4UIcmdWithABool*   recordMinECmd;
+  G4UIcmdWithABool* polaronActiveCmd;
+G4UIcmdWithADoubleAndUnit* polaronEnergyCmd;
+G4UIcmdWithADouble* polaronEfficiencyCmd;
 
   // Empirical Lindhard Model Macro Commands
   G4UIcmdWithABool* EmpEDepKCmd;

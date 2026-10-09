@@ -116,6 +116,12 @@ public:
   static const G4String& GetLukeDebugFile() { return Instance()->lukeFilename; }
   static const G4VNIELPartition* GetNIELPartition() { return Instance()->nielPartition; }
 
+  // Polaron formation physics
+static G4bool GetPolaronActive()           { return Instance()->polaronActive; }
+static G4double GetPolaronFormationEnergy() { return Instance()->polaronFormationEnergy; }
+static G4double GetPolaronPhononEfficiency() { return Instance()->polaronPhononEfficiency; }
+
+
   // Change values (e.g., via Messenger) -- pass strings by value for toLower()
   static void SetVerboseLevel(G4int value) { Instance()->verbose = value; }
   static void SetMaxChargeBounces(G4int value) { Instance()->ehBounces = value; }
@@ -162,6 +168,11 @@ public:
   static void SetEmpEhigh(G4double value) { Instance()->EmpEhigh = value; }
   static void SetEmpkFixed(G4double value) { Instance()->EmpkFixed = value; }
   static void SetEmpEDepK(G4bool value) { Instance()->EmpEDepK = value; }
+
+// Setters for macro commands (static, like getters)
+static void SetPolaronActive(G4bool active)       { Instance()->polaronActive = active; }
+static void SetPolaronFormationEnergy(G4double e) { Instance()->polaronFormationEnergy = e; }
+static void SetPolaronPhononEfficiency(G4double f) { Instance()->polaronPhononEfficiency = f; }
 
   // These settings require the geometry to be rebuilt
   static void SetLatticeDir(const G4String& dir)
@@ -229,7 +240,10 @@ private:
   G4bool chargeCloud;    // Produce e/h pairs around position ($G4CMP_CHARGE_CLOUD) 
   G4bool recordMinE;     // Store below-minimum track energy as NIEL when killed
   G4VNIELPartition* nielPartition; // Function class to compute non-ionizing ($G4CMP_NIEL_FUNCTION)
-
+ 
+G4bool polaronActive;                      // Enable/disable polaron formation
+G4double polaronFormationEnergy;           // Formation energy (Stokes shift) in eV
+G4double polaronPhononEfficiency;          // Fraction of energy → phonons (0-1)
   // Empirical Lindhard Model Parameters
     // Model fit parameters
   G4double Empklow;  
